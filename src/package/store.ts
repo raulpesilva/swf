@@ -2,7 +2,7 @@ import { Url } from './types'
 
 class Store {
   #store = new Map()
-  #fetcher = (url: Url) => fetch(url, { method: 'get' })
+  #fetcher = async (url: Url) => await fetch(url, { method: 'get' })
 
   get(url: Url) {
     return this.#store.get(url)

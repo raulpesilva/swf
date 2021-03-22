@@ -10,29 +10,32 @@ const checkHasCachedDataInRequest = (url: Url) => {
   return store.get(url)
 }
 
+type sendProps = { noCache?: boolean } & any
+
 const useSWF = <S>(baseUrl: Url, fetcher?: Fetcher<S>) => {
   const loading = useRef(false)
   const error = useRef<Response | undefined>(undefined)
   const cachedUrl = useRef('')
-  const result = useRef<S | Response | undefined>(undefined)
-  const previousOptions = useRef(undefined)
+  const result = useRef<S | undefined>(undefined)
+  const previousOptions = useRef<any>(undefined)
   const request = useRef(fetcher ?? store.getFetcher())
   const [, forceRender] = useState(0)
 
   const reRender = () => {
-    forceRender(prev => prev + 1)
+    forceRender((prev) => prev + 1)
   }
 
   const send = useCallback(
-    async (options, url?: Url) => {
+    async (options: sendProps, url?: Url): Promise<{ result: S | undefined; error: Response | undefined }> => {
       loading.current = true
       result.current = checkHasCachedDataInRequest(url ?? baseUrl)
       reRender()
-      previousOptions.current = options
+      const { noCache, ...rest } = options
+      previousOptions.current = rest
 
       try {
-        const data = await request.current(url ?? baseUrl, options)
-        !options.noCache && store.set(url ?? baseUrl, data)
+        const data = (await request.current(url ?? baseUrl, rest)) as S
+        !noCache && store.set(url ?? baseUrl, data)
         cachedUrl.current = url ?? baseUrl
         result.current = data
         error.current = undefined
@@ -50,9 +53,11 @@ const useSWF = <S>(baseUrl: Url, fetcher?: Fetcher<S>) => {
 
   const preFetch = useCallback(
     async (options, url?: Url) => {
+      const { noCache, ...rest } = options
+      previousOptions.current = rest
       try {
-        const data = await request.current(url ?? baseUrl, options)
-        !options.noCache && store.set(url ?? baseUrl, data)
+        const data = (await request.current(url ?? baseUrl, rest)) as S
+        !noCache && store.set(url ?? baseUrl, data)
         cachedUrl.current = url ?? baseUrl
         result.current = data
         error.current = undefined
@@ -64,9 +69,9 @@ const useSWF = <S>(baseUrl: Url, fetcher?: Fetcher<S>) => {
     [baseUrl]
   )
 
-  const revalidate = useCallback(async options => {
+  const revalidate = useCallback(async (options) => {
     try {
-      const data = await request.current(cachedUrl.current, previousOptions.current)
+      const data = (await request.current(cachedUrl.current, previousOptions.current)) as S
       !options.noCache && store.set(cachedUrl.current, data)
       result.current = data
       error.current = undefined

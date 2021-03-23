@@ -1,6 +1,6 @@
-import { useRef, useState, useCallback, useDebugValue } from 'react'
+import { useCallback, useDebugValue, useRef, useState } from 'react'
 import { store } from './store'
-import { Fetcher, Url } from './types'
+import { Fetcher, Options, Url } from './types'
 
 export const setFetcher = <S>(fetcher: Fetcher<S>) => {
   store.setFetcher(fetcher)
@@ -9,8 +9,6 @@ export const setFetcher = <S>(fetcher: Fetcher<S>) => {
 const checkHasCachedDataInRequest = (url: Url) => {
   return store.get(url)
 }
-
-type sendProps = { noCache?: boolean } & any
 
 const useSWF = <S>(baseUrl: Url, fetcher?: Fetcher<S>) => {
   const loading = useRef(false)
@@ -22,11 +20,11 @@ const useSWF = <S>(baseUrl: Url, fetcher?: Fetcher<S>) => {
   const [, forceRender] = useState(0)
 
   const reRender = () => {
-    forceRender((prev) => prev + 1)
+    forceRender(prev => prev + 1)
   }
 
   const send = useCallback(
-    async (options: sendProps, url?: Url): Promise<{ result: S | undefined; error: Response | undefined }> => {
+    async (options?: Options, url?: Url): Promise<{ result: S | undefined; error: Response | undefined }> => {
       loading.current = true
       result.current = checkHasCachedDataInRequest(url ?? baseUrl)
       reRender()
@@ -52,7 +50,7 @@ const useSWF = <S>(baseUrl: Url, fetcher?: Fetcher<S>) => {
   )
 
   const preFetch = useCallback(
-    async (options, url?: Url) => {
+    async (options?: Options, url?: Url) => {
       const { noCache, ...rest } = options
       previousOptions.current = rest
       try {
@@ -69,7 +67,7 @@ const useSWF = <S>(baseUrl: Url, fetcher?: Fetcher<S>) => {
     [baseUrl]
   )
 
-  const revalidate = useCallback(async (options) => {
+  const revalidate = useCallback(async (options?: Options) => {
     try {
       const data = (await request.current(cachedUrl.current, previousOptions.current)) as S
       !options.noCache && store.set(cachedUrl.current, data)
